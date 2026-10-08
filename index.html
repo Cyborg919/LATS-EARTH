@@ -1,0 +1,1422 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>LATS — Live Monitoring</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+ integrity="sha256-p4NxAoJBhIINfQ3M6ZrT3HfQYJf3n7d4j5n0Q2u4c0=" crossorigin=""/>
+<style>
+#map{height:55vh;min-height:420px;max-height:700px;border-radius:16px;margin-top:12px;overflow:hidden;touch-action:none;position:relative;width:100%;}
+.chartBox{background:#f8faf9;border-radius:14px;padding:10px;margin-top:12px}
+.chartTitle{font-weight:750;font-size:14px;margin-bottom:7px}
+.chartLegend{font-size:10px;color:#6d7a82;margin-top:4px}
+svg.chart{width:100%;height:180px;display:block}
+.timeline{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-top:12px}
+.tItem{text-align:center;font-size:10px;color:#66747b}
+.tBar{height:70px;border-radius:9px 9px 5px 5px;display:flex;align-items:flex-end;overflow:hidden;background:#e8eeee}
+.tFill{width:100%;border-radius:9px 9px 0 0}
+.tPct{font-weight:750;font-size:11px;margin:4px 0}
+.sensorRow{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid #edf1ef;font-size:13px}
+.sensorRow:last-child{border-bottom:0}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px}
+.greenDot{background:#22a06b}.amberDot{background:#d88717}.redDot{background:#d13c3c}
+.alertItem{padding:11px 12px;border-radius:12px;background:#f6f8f7;margin-top:8px;font-size:12px;line-height:1.4}
+.alertHigh{border-left:4px solid #d88717}.alertLow{border-left:4px solid #22a06b}.alertInfo{border-left:4px solid #6584a5}
+.layerBtns{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+.mapControlRow{display:flex;gap:7px;flex-wrap:wrap;margin-top:9px}
+.mapControlRow button{width:auto;padding:9px 11px;background:#e8f1ed;color:#075d3d;font-size:12px}
+.mapControlRow button.active{background:#096b45;color:#fff}
+.mapControlRow .streetViewBtn{background:#1b73e8;color:#fff}
+.mapControlRow .locateBtn{background:#fff;color:#075d3d;border:1px solid #d5e1dc}
+.mapHelp{font-size:11px;color:#6d7a82;margin-top:8px;line-height:1.35}
+#map .leaflet-control-zoom{margin-top:10px;margin-left:10px}
+#map .leaflet-control-zoom a{width:38px;height:38px;line-height:38px;font-size:20px}
+#map .leaflet-control-attribution{font-size:9px}
+.leaflet-container{cursor:grab}
+.leaflet-container:active{cursor:grabbing}
+body.map-fullscreen{overflow:hidden}
+body.map-fullscreen #map{
+  position:fixed !important;
+  inset:0 !important;
+  width:100vw !important;
+  height:100dvh !important;
+  min-height:100dvh !important;
+  max-height:none !important;
+  margin:0 !important;
+  border-radius:0 !important;
+  z-index:99999 !important;
+  background:#e9efec;
+}
+body.map-fullscreen #map .leaflet-control-attribution{bottom:0}
+body.map-fullscreen .mapExit{
+  display:block;
+  position:fixed;
+  z-index:100000;
+  top:14px;
+  right:14px;
+  width:auto;
+  background:#fff;
+  color:#075d3d;
+  border:0;
+  border-radius:12px;
+  padding:10px 14px;
+  box-shadow:0 3px 14px #0003;
+  font-weight:750;
+}
+.mapExit{display:none}
+#earthMap{display:block;height:68vh;min-height:420px;max-height:700px;border-radius:16px;overflow:hidden;position:relative;background:#06111d}
+#earthMap.active{display:block}
+.earthSearchPanel{position:absolute;z-index:20;top:12px;left:12px;right:12px;pointer-events:none}.earthSearchBox{pointer-events:auto;display:flex;gap:7px;max-width:680px;margin:auto;background:#ffffffee;padding:7px;border-radius:16px;box-shadow:0 4px 18px #0003;backdrop-filter:blur(8px)}.earthSearchBox input{flex:1;min-width:0;border:0;outline:0;padding:11px 12px;border-radius:11px;font-size:15px;background:#f4f7f6}.earthSearchBox button{width:auto;padding:11px 13px;border-radius:11px;font-size:13px}.earthSuggestions{pointer-events:auto;max-width:680px;margin:7px auto 0;background:#fff;border-radius:13px;overflow:hidden;box-shadow:0 4px 18px #0003}.earthSuggestion{padding:11px 13px;border-bottom:1px solid #edf1ef;cursor:pointer}.earthSuggestion:last-child{border-bottom:0}.earthSuggestion b{display:block;font-size:13px}.earthSuggestion span{display:block;color:#6d7a82;font-size:11px;margin-top:2px}.earthTools{pointer-events:auto;display:flex;gap:7px;justify-content:center;flex-wrap:wrap;margin:8px auto 0}.earthTools button{width:auto;padding:9px 11px;border-radius:12px;font-size:12px;background:#ffffffee;color:#075d3d;box-shadow:0 3px 12px #0002}.earthTools button.primary{background:#096b45;color:#fff}.earthStatus{pointer-events:none;max-width:680px;margin:8px auto 0;text-align:center;color:#fff;font-size:11px;text-shadow:0 1px 3px #000;background:#0005;border-radius:20px;padding:6px 9px}.earthExit{position:absolute;z-index:10;top:12px;left:12px;border:0;border-radius:12px;padding:10px 13px;background:#fff;color:#075d3d;font-weight:750;box-shadow:0 3px 14px #0003}
+.earthPlaceCard{position:absolute;z-index:18;left:12px;right:12px;bottom:12px;max-width:680px;margin:auto;background:#fffffff2;border-radius:20px;padding:14px 15px;box-shadow:0 5px 22px #0004;backdrop-filter:blur(10px);display:none}
+.earthPlaceCard.show{display:block}.earthPlaceTop{display:flex;align-items:flex-start;gap:10px}.earthPlacePin{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:#e8f5ef;color:#096b45;font-size:22px;flex:none}.earthPlaceName{font-size:20px;font-weight:800;line-height:1.1}.earthPlaceAddress{font-size:12px;color:#66747b;margin-top:4px;line-height:1.35}.earthPlaceMeta{font-size:11px;color:#66747b;margin-top:7px}.earthPlaceActions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:11px}.earthPlaceActions button{width:auto;padding:10px 8px;border-radius:12px;font-size:12px;background:#e8f1ed;color:#075d3d}.earthPlaceActions button:first-child{background:#096b45;color:#fff}.nearbyStrip{display:flex;gap:7px;overflow-x:auto;margin-top:9px;padding-bottom:2px}.nearbyChip{white-space:nowrap;background:#f2f5f4;border-radius:999px;padding:7px 10px;font-size:11px;color:#24433a;border:1px solid #e0e8e4}
+@media(max-width:420px){.earthPlaceCard{bottom:8px}.earthPlaceName{font-size:18px}.earthPlaceActions button{font-size:11px;padding:9px 6px}}
+.earthHelp{font-size:11px;color:#6d7a82;margin-top:8px;line-height:1.35}
+body.earth-fullscreen{overflow:hidden}
+body.earth-fullscreen #earthMap{position:fixed;inset:0;width:100vw;height:100dvh;max-height:none;min-height:100dvh;z-index:99999;border-radius:0}
+body.earth-fullscreen #map{display:none}
+.layerBtn{width:auto;padding:9px 11px;background:#e8f1ed;color:#075d3d;font-size:12px}
+.layerBtn.active{background:#096b45;color:#fff}
+.metricWide{grid-column:1/-1}
+.publicFallback{margin-top:10px;padding:11px 12px;border-radius:12px;background:#f3f8f5;border:1px solid #dbe9e2;font-size:11px;color:#40534a;line-height:1.4}.publicFallback b{color:#075d3d}.sourceBadge{display:inline-block;margin-left:6px;padding:3px 7px;border-radius:999px;background:#e7f4ee;color:#075d3d;font-weight:750;font-size:9px}
+.searchRow{display:flex;gap:8px}.searchRow input{flex:1;min-width:0;padding:13px;border:1px solid #d7e1dd;border-radius:12px;font-size:15px}.searchRow button{width:auto;white-space:nowrap;padding:13px 15px}
+.mapHint{font-size:11px;color:#6d7a82;margin-top:8px}
+.suggestions{background:#fff;border:1px solid #dce5e1;border-radius:12px;overflow:hidden;box-shadow:0 4px 14px #17212b14}
+.suggestion{padding:11px 12px;border-bottom:1px solid #edf1ef;font-size:13px;cursor:pointer}
+.suggestion:last-child{border-bottom:0}.suggestion:hover{background:#f0f7f3}
+.suggestion b{display:block;font-size:14px}.suggestion span{color:#6d7a82;font-size:11px}
+:root{--green:#096b45;--bg:#f4f7f6;--text:#14212b;--muted:#6d7a82;--card:#fff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Inter,Arial,sans-serif;color:var(--text)}
+header{background:linear-gradient(145deg,#075c3b,#0b7650);color:#fff;padding:24px 18px 22px}
+.top{display:flex;justify-content:space-between;align-items:center}.brand{font-size:30px;font-weight:800}.live{font-size:12px;background:#ffffff22;border:1px solid #ffffff44;padding:7px 10px;border-radius:20px}
+.sub{margin-top:5px;font-size:15px;opacity:.88}.location{margin-top:16px;font-size:14px;opacity:.95}
+main{max-width:600px;margin:auto;padding:14px 14px 30px}
+.card{background:var(--card);border-radius:20px;padding:17px;margin:12px 0;box-shadow:0 4px 18px #17212b12}
+.riskRow{display:flex;align-items:center;gap:14px}.ring{width:94px;height:94px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--risk) calc(var(--pct)*1%),#e8eeee 0);position:relative;flex:none}
+.ring:after{content:"";position:absolute;width:72px;height:72px;background:white;border-radius:50%}.pct{position:relative;z-index:1;font-size:22px;font-weight:800}
+.riskTitle{font-size:23px;font-weight:800}.riskNote{color:var(--muted);font-size:13px;margin-top:5px;line-height:1.4}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{background:#eef4f2;border-radius:14px;padding:13px}.label{font-size:12px;color:var(--muted)}.val{font-size:22px;font-weight:750;margin-top:5px}.tiny{font-size:11px;color:var(--muted);margin-top:3px}
+.weather{display:flex;align-items:center;gap:12px}.icon{font-size:40px}.temp{font-size:32px;font-weight:800}.desc{color:var(--muted)}
+button{border:0;border-radius:14px;padding:14px;width:100%;background:var(--green);color:#fff;font-weight:750;font-size:16px}
+.secondary{background:#e8f1ed;color:#075d3d;margin-top:9px}.updated{text-align:center;color:var(--muted);font-size:11px;margin-top:12px}
+.warn{background:#fff7e7;border:1px solid #f2dfb3;color:#70530a;border-radius:12px;padding:10px;font-size:12px;line-height:1.45;margin-top:12px}
+.error{color:#9a2c2c;font-size:12px;display:none}
+@media(max-width:370px){.ring{width:82px;height:82px}.ring:after{width:63px;height:63px}.pct{font-size:19px}.riskTitle{font-size:20px}}
+
+/* Live information panels */
+.infoTabs{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.infoTabs button{width:auto;padding:9px 12px;border-radius:999px;background:#e8f1ed;color:#075d3d;font-size:12px}.infoTabs button.active{background:#096b45;color:#fff}.forecastGrid{display:grid;grid-template-columns:repeat(7,minmax(82px,1fr));gap:7px;overflow-x:auto;padding-bottom:4px}.forecastDay{min-width:82px;background:#f6f9f7;border:1px solid #e5ece8;border-radius:13px;padding:9px 7px;text-align:center}.forecastDay .day{font-weight:800;font-size:12px}.forecastDay .ficon{font-size:23px;margin:5px 0}.forecastDay .temps{font-weight:750;font-size:12px}.forecastDay .rain{font-size:10px;color:#68777d;margin-top:4px}.newsItem{display:block;text-decoration:none;color:#17352d;background:#f6f9f7;border:1px solid #e5ece8;border-radius:13px;padding:10px 11px;margin-top:8px}.newsItem b{display:block;font-size:13px;line-height:1.3}.newsMeta{font-size:10px;color:#718087;margin-top:5px}.helpGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.helpItem{border:1px solid #e4ebe7;background:#f8faf9;border-radius:13px;padding:10px}.helpItem b{display:block;font-size:13px}.helpItem span{display:block;font-size:10px;color:#718087;margin:3px 0 8px}.helpItem a{display:inline-block;text-decoration:none;background:#096b45;color:#fff;border-radius:9px;padding:7px 10px;font-size:11px;font-weight:750}.helpNote{font-size:10px;color:#718087;line-height:1.4;margin-top:9px}.sectionBusy{font-size:12px;color:#718087;padding:10px 0}.liveBadge{display:inline-block;font-size:9px;padding:3px 6px;border-radius:999px;background:#e8f5ef;color:#096b45;margin-left:5px;font-weight:800}
+.regionalSourceGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.regionalSource{border:1px solid #e4ebe7;background:#f8faf9;border-radius:13px;padding:10px}.regionalSource b{display:block;font-size:12px}.regionalSource span{display:block;font-size:10px;color:#718087;line-height:1.35;margin:4px 0 8px}.regionalSource a{display:inline-block;text-decoration:none;background:#096b45;color:#fff;border-radius:9px;padding:7px 9px;font-size:11px;font-weight:750;margin-right:5px;margin-top:4px}.regionalSource a.alt{background:#e8f1ed;color:#075d3d}.regionalSource .station{font-size:9px;color:#096b45;font-weight:800;text-transform:uppercase;letter-spacing:.3px}@media(max-width:520px){.regionalSourceGrid{grid-template-columns:1fr}}
+@media(max-width:520px){.forecastGrid{grid-template-columns:repeat(7,82px)}.helpGrid{grid-template-columns:1fr}.infoTabs{overflow-x:auto;flex-wrap:nowrap}.infoTabs button{white-space:nowrap}}
+
+/* Real ESP32 station panel */
+.stationLiveCard{margin-top:10px;border:1px solid #dfe9e4;border-radius:16px;padding:12px;background:linear-gradient(135deg,#f8fcfa,#eef8f3)}
+.stationLiveHead{display:flex;justify-content:space-between;align-items:center;gap:10px}.stationLiveBadge{font-size:10px;font-weight:800;padding:5px 8px;border-radius:999px;background:#e8f7ef;color:#08734b}.stationLiveBadge.off{background:#f2f4f4;color:#6c777b}.stationMetrics{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:10px}.stationMetric{background:#fff;border-radius:12px;padding:9px}.stationMetric .smLabel{font-size:10px;color:#6d7a82}.stationMetric .smVal{font-size:19px;font-weight:800;margin-top:2px}.stationMeta{font-size:10px;color:#6d7a82;margin-top:9px;line-height:1.4}.stationConfig{display:flex;gap:7px;margin-top:9px}.stationConfig input{min-width:0;flex:1;padding:9px;border:1px solid #d7e1dc;border-radius:10px}.stationConfig button{padding:9px 11px;border:0;border-radius:10px;background:#096b45;color:#fff;font-weight:750}.stationRisk{margin-top:9px;font-weight:800;font-size:12px}.stationHistory{margin-top:8px;font-size:10px;color:#627177}@media(max-width:420px){.stationMetrics{grid-template-columns:1fr 1fr}.stationConfig{flex-direction:column}}
+
+/* Public real-station network */
+.publicStationCard{border:1px solid #bfe8d8;background:linear-gradient(180deg,#f7fffb,#fff)}
+.publicNetHead{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:8px}
+.publicBadge{font-size:11px;font-weight:800;padding:6px 9px;border-radius:999px;background:#dff7ec;color:#087f52}
+.publicBadge.stale{background:#fff2d9;color:#9a6200}.publicBadge.none{background:#eef1f3;color:#66727b}
+.publicGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.publicMetric{border:1px solid #e1e8e6;border-radius:14px;padding:12px;background:#fff}
+.publicMetric .pmLabel{font-size:11px;color:#68777b}.publicMetric .pmValue{font-size:22px;font-weight:800;margin-top:5px}.publicMetric .pmSource{font-size:10px;color:#7a8589;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.publicStationList{display:grid;gap:8px;margin-top:10px}.publicStationItem{border:1px solid #e5ebe9;border-radius:12px;padding:10px;background:#fff;font-size:12px}.publicStationItem b{display:block;font-size:13px}.publicStationItem span{color:#68777b}.publicStationItem a{display:inline-block;margin-top:7px;color:#087f52;font-weight:700;text-decoration:none}
+.publicNote{font-size:11px;line-height:1.45;color:#68777b;margin-top:10px}.publicSpinner{color:#087f52;font-weight:700}
+@media(max-width:520px){.publicGrid{grid-template-columns:1fr 1fr}.publicMetric .pmValue{font-size:19px}}
+
+</style>
+<style>
+/* Floating local-weather ticker */
+#liveNewsTicker{position:fixed;left:14px;right:14px;bottom:18px;z-index:99999;display:flex;justify-content:center;pointer-events:none}
+.liveNewsToast{max-width:560px;width:min(92vw,560px);background:rgba(9,25,20,.94);color:#fff;border:1px solid rgba(255,255,255,.16);border-radius:15px;padding:10px 12px;box-shadow:0 10px 30px rgba(0,0,0,.28);pointer-events:auto;cursor:pointer;animation:newsIn .35s ease both}
+.liveNewsToast.hide{animation:newsOut .45s ease forwards}
+.liveNewsToast .toastTop{display:flex;align-items:center;gap:7px;font-size:10px;opacity:.8;margin-bottom:3px}
+.liveNewsToast .pulse{width:7px;height:7px;border-radius:50%;background:#35d38b;box-shadow:0 0 0 4px rgba(53,211,139,.14);animation:pulseNews 1.3s infinite}
+.liveNewsToast .toastTitle{font-size:13px;line-height:1.3;font-weight:750}
+.liveNewsToast .toastSource{font-size:9px;opacity:.65;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@keyframes newsIn{from{opacity:0;transform:translateY(18px) scale(.98)}to{opacity:1;transform:none}}
+@keyframes newsOut{to{opacity:0;transform:translateY(14px) scale(.98)}}
+@keyframes pulseNews{50%{transform:scale(1.35);opacity:.65}}
+@media(max-width:520px){#liveNewsTicker{bottom:72px}.liveNewsToast{padding:9px 11px;border-radius:13px}.liveNewsToast .toastTitle{font-size:12px}}
+.localWeatherNote{font-size:10px;color:#718087;line-height:1.4;margin-top:8px}
+.weatherSourceChip{display:inline-block;background:#eef6f2;color:#096b45;border-radius:999px;padding:3px 7px;margin:3px 3px 0 0;font-size:9px}
+</style>
+</head>
+<body>
+<header>
+  <div class="top"><div><div class="brand">LATS</div><div style="font-size:11px;opacity:.82;margin-top:2px">Created by Vignesh P</div></div><div class="live">● LIVE WEATHER</div></div>
+  <div class="sub">Landslide Alert & Tracking System</div>
+  <div class="location" id="location">Detecting your location…</div>
+  <div style="margin-top:7px;font-size:11px;opacity:.8">● Monitoring system online • weather updates every 10 min</div>
+</header>
+<main>
+
+<section class="card">
+  <b>🌍 Choose monitoring location</b>
+  <div class="searchRow" style="margin-top:12px">
+    <input id="placeInput" placeholder="Search city, village, hamlet, locality…" autocomplete="off"
+      oninput="suggestPlaces()" onkeydown="if(event.key==='Enter')searchPlace()">
+    <button onclick="searchPlace()">Search</button>
+  </div>
+  <div id="suggestions" style="margin-top:7px"></div>
+  <div class="mapHelp"><b>Interactive Earth</b> is now the main map. Search a city, village, hamlet, locality or neighbourhood, choose a result, then freely drag, rotate and zoom around nearby areas. Tap anywhere on Earth to select that point.</div>
+  <div id="map" style="display:none"></div>
+  <div id="earthMap" aria-label="Interactive 3D Earth satellite globe">
+    <div class="earthSearchPanel">
+      <div class="earthSearchBox">
+        <input id="earthPlaceInput" placeholder="Search any city, village, locality…" autocomplete="off" oninput="suggestEarthPlaces()" onkeydown="if(event.key==='Enter')searchEarthPlace()">
+        <button class="primary" onclick="searchEarthPlace()">🔎 Search</button>
+      </div>
+      <div id="earthSuggestions"></div>
+      <div class="earthTools">
+        <button onclick="locateOnEarth()">◎ My location</button>
+        <button onclick="flyToSelected()">🎯 Selected place</button>
+        <button onclick="openStreetView()">📍 Street View</button>
+        <button onclick="toggleEarthFullscreen()">⛶ Fullscreen</button>
+      </div>
+      <div class="earthStatus" id="earthStatus">Drag to move • pinch/scroll to zoom • drag with two fingers to rotate • tap Earth to select a location</div>
+    <div id="liveNewsTicker" aria-live="polite"></div>
+    </div>
+    <div class="earthPlaceCard" id="earthPlaceCard">
+      <div class="earthPlaceTop">
+        <div class="earthPlacePin">📍</div>
+        <div style="min-width:0;flex:1">
+          <div class="earthPlaceName" id="earthPlaceName">Selected place</div>
+          <div class="earthPlaceAddress" id="earthPlaceAddress">Search for a place to explore it.</div>
+          <div class="earthPlaceMeta" id="earthPlaceMeta"></div>
+        </div>
+      </div>
+      <div class="earthPlaceActions">
+        <button onclick="openDirections()">➜ Directions</button>
+        <button onclick="openStreetView()">◉ Street View</button>
+        <button onclick="exploreNearby()">⌖ Nearby</button>
+      </div>
+      <div class="nearbyStrip" id="nearbyStrip"></div>
+    </div>
+    <button class="earthExit" onclick="toggleEarthFullscreen()">⛶ Fullscreen</button>
+  </div>
+  <div class="mapHint">Search results use OpenStreetMap place data, including fine-grained villages, hamlets, localities and neighbourhoods when those places are mapped. After selecting one, the globe flies there and you can freely explore nearby places.</div>
+</section>
+
+<section class="card">
+  <div class="riskRow">
+    <div class="ring" id="ring" style="--pct:0;--risk:#22a06b"><div class="pct" id="pct">0%</div></div>
+    <div>
+      <div class="riskTitle" id="riskTitle">Loading…</div>
+      <div class="riskNote" id="riskNote">Combining live weather indicators with the prototype risk model.</div>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="weather">
+    <div class="icon" id="weatherIcon">⏳</div>
+    <div><div class="temp" id="temp">--°C</div><div class="desc" id="weatherText">Loading weather…</div></div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="grid">
+    <div class="metric"><div class="label">Rainfall · last hour</div><div class="val" id="rain1">-- mm</div><div class="tiny">Live weather model</div></div>
+    <div class="metric"><div class="label">Rainfall · next 24h</div><div class="val" id="rain24">-- mm</div><div class="tiny">Forecast total</div></div>
+    <div class="metric"><div class="label">Humidity</div><div class="val" id="humidity">--%</div><div class="tiny">Relative humidity</div></div>
+    <div class="metric"><div class="label">Soil moisture</div><div class="val" id="soil">--%</div><div class="tiny">Modelled surface soil</div></div>
+    <div class="metric"><div class="label">Wind</div><div class="val" id="wind">-- km/h</div><div class="tiny">10 m wind</div></div>
+    <div class="metric"><div class="label">Weather code</div><div class="val" id="code">--</div><div class="tiny">WMO condition code</div></div>
+  </div>
+</section>
+
+
+<section class="card" id="forecastCard">
+  <b>🌦️ Weather forecast <span class="liveBadge">LIVE</span></b>
+  <div class="chartLegend" id="forecastLocation">Forecast for the selected location.</div>
+  <div class="forecastGrid" id="forecastGrid" style="margin-top:10px"><div class="sectionBusy">Loading forecast…</div></div>
+  <div class="infoTabs">
+    <button onclick="openWeatherDetails()">🌤️ Full weather</button>
+    <button onclick="refreshForecast()">↻ Refresh forecast</button>
+  </div>
+</section>
+
+<section class="card" id="newsCard">
+  <b>🌦️ Local weather updates <span class="liveBadge">LIVE</span></b>
+  <div class="chartLegend" id="newsLocation">Weather-related reports for the selected place.</div>
+  <div id="newsList"><div class="sectionBusy">Loading local weather reports…</div></div>
+  <div class="localWeatherNote">Updates are gathered from publicly indexed news coverage for this location. Public Facebook/news-channel posts may appear only when they are publicly indexed; private/login-only feeds cannot be embedded directly in this static site.</div>
+  <div class="infoTabs">
+    <button onclick="openGoogleNews()">🔎 More weather reports</button>
+    <button onclick="loadNews()">↻ Refresh updates</button>
+  </div>
+</section>
+
+<section class="card" id="regionalWeatherCard">
+  <b>📻 Regional weather & bulletin sources <span class="liveBadge">OFFICIAL</span></b>
+  <div class="chartLegend" id="regionalSourceText">Finding the best official regional sources for the selected place…</div>
+  <div id="regionalSourceGrid" class="regionalSourceGrid"></div>
+  <div class="localWeatherNote">Akashvani/Prasar Bharati provides regional radio and news bulletins. IMD provides official district-wise warnings and nowcasts. The floating ticker only shows text that can be obtained from public web feeds; live radio audio itself is not silently transcribed by this static site.</div>
+</section>
+
+<section class="card" id="helpCard">
+  <b>🆘 Emergency & helplines</b>
+  <div class="chartLegend" id="helpLocation">Useful official emergency contacts for the selected country.</div>
+  <div class="helpGrid" id="helpGrid"></div>
+  <div class="helpNote">For a life-threatening emergency, use the emergency service for your country. Numbers can differ by country and region. The India entries below are based on current Government of India information.</div>
+</section>
+
+<section class="card">
+  <b>⚠️ LATS Hazard Map</b>
+  <div class="layerBtns">
+    <button class="layerBtn active" id="riskLayerBtn" onclick="toggleRiskLayer()">Risk Zone</button>
+    <button class="layerBtn" onclick="showTerrainInfo()">Terrain</button>
+    <button class="layerBtn" onclick="showSensorInfo()">Sensors</button>
+  </div>
+  <div class="chartLegend">Selected location is shown on the map. Risk colour is the prototype model status.</div>
+</section>
+
+<section class="card">
+  <b>📈 Rainfall trend</b>
+  <div class="chartBox">
+    <div class="chartTitle">Rainfall — recent hours + next 24h forecast</div>
+    <svg id="rainChart" class="chart" viewBox="0 0 600 180" preserveAspectRatio="none"></svg>
+    <div class="chartLegend">Past precipitation and forecast precipitation from the live weather service.</div>
+  </div>
+</section>
+
+<section class="card">
+  <b>⏱️ 24-hour LATS risk timeline</b>
+  <div id="timeline" class="timeline"></div>
+  <div class="chartLegend">Illustrative model risk score based on available weather indicators; not a validated landslide probability.</div>
+</section>
+
+
+<section class="card" id="physicalStationCard">
+  <b>📡 Physical LATS sensor station <span class="liveBadge">LIVE</span></b>
+  <div class="chartLegend" id="stationLocationText">Looking for a real ESP32 station near the selected location…</div>
+  <div class="stationLiveCard">
+    <div class="stationLiveHead"><div><strong id="stationName">No physical station connected</strong><div class="stationHistory" id="stationDistance">Search for a location with a deployed LATS station.</div></div><span class="stationLiveBadge off" id="stationBadge">OFFLINE</span></div>
+    <div class="stationMetrics">
+      <div class="stationMetric"><div class="smLabel">🌧️ Rain · last 1h</div><div class="smVal" id="stationRain1">-- mm</div></div>
+      <div class="stationMetric"><div class="smLabel">🌧️ Rain · last 24h</div><div class="smVal" id="stationRain24">-- mm</div></div>
+      <div class="stationMetric"><div class="smLabel">🌱 Soil moisture</div><div class="smVal" id="stationSoil">--%</div></div>
+      <div class="stationMetric"><div class="smLabel">📶 Signal</div><div class="smVal" id="stationRssi">-- dBm</div></div>
+    </div>
+    <div class="stationRisk" id="stationRisk">Waiting for physical sensor data</div>
+    <div class="stationMeta" id="stationUpdated">No physical station reading yet.</div>
+    <div class="stationConfig">
+      <input id="stationApiInput" placeholder="Public station gateway URL (optional)">
+      <button onclick="saveStationApi()">Save</button>
+    </div>
+  </div>
+  <div class="chartLegend">The physical values above come only from an actual ESP32 station. Weather-model values are kept separate. The station normally reports every 30 seconds.</div>
+</section>
+
+<section class="card publicStationCard" id="publicStationCard">
+  <div class="publicNetHead">
+    <b>🌐 Real public sensor stations</b>
+    <span class="publicBadge none" id="publicStationBadge">SEARCHING</span>
+  </div>
+  <div class="chartLegend" id="publicStationText">Finding nearby real community weather stations for the selected location…</div>
+  <div class="publicGrid">
+    <div class="publicMetric"><div class="pmLabel">🌧️ Rain gauge</div><div class="pmValue" id="publicRainValue">--</div><div class="pmSource" id="publicRainSource">No public rain sensor yet</div></div>
+    <div class="publicMetric"><div class="pmLabel">🌱 Soil moisture</div><div class="pmValue" id="publicSoilValue">--</div><div class="pmSource" id="publicSoilSource">No public soil sensor yet</div></div>
+  </div>
+  <div class="publicStationList" id="publicStationList"></div>
+  <div class="publicNote">Live values come from real publicly shared weather stations in the openSenseMap network. They are reference observations, not LATS-owned sensors and not simulated. A station is marked LIVE only when its measurement timestamp is recent. Rain and soil are shown only when an actual public station reports those measurements.</div>
+</section>
+
+<section class="card">
+  <b>📡 Monitoring station status</b>
+  <div class="sensorRow"><span><span class="dot greenDot"></span>Weather data</span><b id="weatherSensor">ONLINE</b></div>
+  <div class="sensorRow"><span><span class="dot greenDot"></span>GPS / location</span><b id="gpsSensor">READY</b></div>
+  <div class="sensorRow"><span><span class="dot amberDot" id="rainGaugeDot"></span>Rain gauge</span><b id="rainGaugeSensor">DEMO</b></div>
+  <div class="sensorRow"><span><span class="dot amberDot" id="soilSensorDot"></span>Soil sensor</span><b id="soilSensorStatus">DEMO</b></div>
+  <div class="sensorRow"><span><span class="dot amberDot" id="esp32Dot"></span>ESP32 station</span><b id="esp32StationStatus">NOT CONNECTED</b></div>
+  <div class="chartLegend">The ESP32 rows remain OFFLINE until your own hardware is deployed. Public community-station observations are shown separately above and are never presented as LATS-owned hardware.</div>
+</section>
+
+<section class="card">
+  <b>🚨 Alert history</b>
+  <div id="alerts"></div>
+</section>
+
+<section class="card">
+  <button onclick="loadWeather()">↻ Refresh live weather</button>
+  <button class="secondary" onclick="useLocation()">⌖ Use my current location</button>
+  <div class="updated" id="updated">Not updated yet</div>
+  <div class="warn"><b>Prototype note:</b> the percentage is a demonstration risk score, not a scientifically validated probability that a landslide will occur. Real deployment should combine local sensors, terrain data and a validated model.</div>
+  <div class="error" id="error"></div>
+</section>
+
+<section class="card">
+  <b>🔗 Share this LATS monitor</b>
+  <p style="font-size:12px;color:#6d7a82;line-height:1.45">
+    When this HTML is hosted online, the selected location can be shared as a normal web link.
+    This local file itself cannot create a public internet URL.
+  </p>
+  <button onclick="copyShareLink()">Copy share link</button>
+</section>
+</main>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+ integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="">
+// ===== Real ESP32 station integration =====
+let LATS_STATION_API = localStorage.getItem('latsStationApi') || '';
+let nearestStation = null;
+function stationApiBase(){ return (LATS_STATION_API||'').replace(/\/$/,''); }
+function saveStationApi(){
+  const v=String($("stationApiInput")?.value||'').trim().replace(/\/$/,'');
+  LATS_STATION_API=v;
+  localStorage.setItem('latsStationApi',v);
+  loadPhysicalStation();
+}
+function stationOnline(ts){
+  if(!ts) return false;
+  const age=(Date.now()-new Date(ts).getTime())/1000;
+  return age <= 120;
+}
+function renderPhysicalStation(st){
+  nearestStation=st||null;
+  const badge=$("stationBadge");
+  if(!st){
+    $("stationName").textContent='No nearby physical station';
+    $("stationDistance").textContent='No deployed LATS ESP32 station was found near this location.';
+    $("stationRain1").textContent='-- mm'; $("stationRain24").textContent='-- mm'; $("stationSoil").textContent='--%'; $("stationRssi").textContent='-- dBm';
+    $("stationRisk").textContent='Waiting for physical sensor data';
+    $("stationUpdated").textContent='No physical station reading available.';
+    badge.textContent='OFFLINE'; badge.classList.add('off');
+    $("stationLocationText").textContent='No physical LATS station was found within the configured search radius.';
+    [$("esp32StationStatus"),$("rainGaugeSensor"),$("soilSensorStatus")].forEach(x=>{if(x)x.textContent='DEMO / OFFLINE';});
+    [$("esp32Dot"),$("rainGaugeDot"),$("soilSensorDot")].forEach(x=>{if(x)x.className='dot amberDot';});
+    return;
+  }
+  const online=stationOnline(st.timestamp);
+  $("stationName").textContent=st.station_id||'LATS ESP32 station';
+  $("stationDistance").textContent=(st.distance_km!=null?st.distance_km+' km away · ':'')+'coordinates '+Number(st.lat).toFixed(4)+', '+Number(st.lon).toFixed(4);
+  $("stationRain1").textContent=Number(st.rain_1h||0).toFixed(1)+' mm';
+  $("stationRain24").textContent=Number(st.rain_24h||0).toFixed(1)+' mm';
+  $("stationSoil").textContent=Number(st.soil_moisture||0).toFixed(0)+'%';
+  $("stationRssi").textContent=st.wifi_rssi!=null?st.wifi_rssi+' dBm':'-- dBm';
+  const score=(st.rain_1h>=30?25:st.rain_1h>=15?12:0)+(st.rain_24h>=150?30:st.rain_24h>=80?18:0)+(st.soil_moisture>=85?30:st.soil_moisture>=70?18:0);
+  const risk=score>=75?'CRITICAL':score>=50?'HIGH':score>=25?'MONITOR':'LOW';
+  $("stationRisk").textContent='Sensor risk level: '+risk+' · prototype score '+score;
+  const dt=st.timestamp?new Date(st.timestamp).toLocaleString():'';
+  $("stationUpdated").textContent=(online?'Last sensor update: ':'Station stale · last update: ')+dt;
+  badge.textContent=online?'ONLINE':'STALE'; badge.classList.toggle('off',!online);
+  $("stationLocationText").textContent='Physical sensor station nearest to '+selectedSearchName()+'. Values are direct field measurements.';
+  const eg=$("esp32StationStatus"), rg=$("rainGaugeSensor"), sg=$("soilSensorStatus");
+  if(eg) eg.textContent=online?'ONLINE':'STALE';
+  if(rg) rg.textContent=online?'LIVE':'STALE';
+  if(sg) sg.textContent=online?'LIVE':'STALE';
+  [$("esp32Dot"),$("rainGaugeDot"),$("soilSensorDot")].forEach(x=>{if(x)x.className='dot '+(online?'greenDot':'amberDot');});
+}
+async function loadPhysicalStation(){
+  const input=$("stationApiInput"); if(input && input.value!==LATS_STATION_API) input.value=LATS_STATION_API;
+  const base=stationApiBase();
+  if(!base || !Number.isFinite(lat) || !Number.isFinite(lon)){ renderPhysicalStation(null); return; }
+  try{
+    const r=await fetch(base+'/api/stations/nearest?lat='+encodeURIComponent(lat)+'&lon='+encodeURIComponent(lon)+'&radius_km=50',{cache:'no-store'});
+    if(!r.ok) throw new Error('station api');
+    const d=await r.json();
+    renderPhysicalStation((d.stations||[])[0]||null);
+  }catch(e){
+    $("stationLocationText").textContent='Station gateway unavailable. Check the public gateway URL.';
+    renderPhysicalStation(null);
+  }
+}
+
+setInterval(()=>{ if(typeof loadPhysicalStation==='function') loadPhysicalStation(); },15000);
+
+</script>
+<script>
+let lat=11.2588, lon=75.7804, locationName="Kozhikode, Kerala (fallback)";
+let map, marker, riskCircle, streetLayer, satelliteLayer, currentBase="street";
+let earthMap=null, earthMarker=null, earthReady=false;
+let latestForecast = null;
+let alertHistory = [];
+let selectedPlace = null;
+
+const $=id=>document.getElementById(id);
+
+function weatherInfo(code){
+ const m={0:["☀️","Clear sky"],1:["🌤️","Mainly clear"],2:["⛅","Partly cloudy"],3:["☁️","Overcast"],45:["🌫️","Fog"],48:["🌫️","Depositing rime fog"],51:["🌦️","Light drizzle"],53:["🌦️","Drizzle"],55:["🌧️","Heavy drizzle"],61:["🌦️","Light rain"],63:["🌧️","Rain"],65:["🌧️","Heavy rain"],71:["🌨️","Light snow"],73:["🌨️","Snow"],75:["❄️","Heavy snow"],80:["🌦️","Rain showers"],81:["🌧️","Rain showers"],82:["⛈️","Heavy rain showers"],95:["⛈️","Thunderstorm"],96:["⛈️","Thunderstorm + hail"],99:["⛈️","Thunderstorm + hail"]};
+ return m[code]||["🌧️","Mixed conditions"];
+}
+
+function calcRisk(r1,r24,soil,humidity){
+ let s=0;
+ s += Math.min(35, r1*1.2);
+ s += Math.min(35, r24/4);
+ s += Math.min(20, Math.max(0,soil-40)*0.55);
+ s += Math.min(10, Math.max(0,humidity-70)*0.33);
+ return Math.round(Math.max(0,Math.min(100,s)));
+}
+
+function renderRisk(p){
+ let title=p>=85?"CRITICAL":p>=65?"HIGH":p>=35?"MONITOR":"LOW";
+ let color=p>=85?"#d13c3c":p>=65?"#d88717":p>=35?"#b39b17":"#22a06b";
+ $("pct").textContent=p+"%";
+ $("riskTitle").textContent=title+" RISK";
+ $("riskNote").textContent=p>=65?"Rain/soil conditions are elevated — monitor the area closely.":p>=35?"Some conditions are elevated — continue monitoring.":"Current weather indicators are relatively low in this demo.";
+ $("ring").style.setProperty("--pct",p);
+ $("ring").style.setProperty("--risk",color);
+}
+
+
+
+function openStreetView(){
+  const url=`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat.toFixed(6)},${lon.toFixed(6)}`;
+  window.open(url,"_blank");
+}
+
+function locateOnMap(){
+  if(!navigator.geolocation){
+    $("error").style.display="block";
+    $("error").textContent="This browser does not provide GPS location.";
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(pos=>{
+    lat=pos.coords.latitude; lon=pos.coords.longitude;
+    locationName="Your current location";
+    map.setView([lat,lon],16);
+    marker.setLatLng([lat,lon]).bindPopup("Your current location").openPopup();
+    if(earthMap && earthReady){earthMap.jumpTo({center:[lon,lat],zoom:Math.max(earthMap.getZoom(),8)}); ensureEarthMarker();}
+    if(riskCircle) riskCircle.setLatLng([lat,lon]);
+    reverseGeocode(lat,lon).then(()=>loadWeather());
+  },()=>{
+    $("error").style.display="block";
+    $("error").textContent="Location permission was not granted.";
+  },{enableHighAccuracy:true,timeout:10000,maximumAge:60000});
+}
+
+
+async function initEarth(){
+  if(earthReady) return;
+  try{
+    const maplibregl = await import("https://unpkg.com/maplibre-gl@6.13.0/dist/maplibre-gl.mjs");
+    window.__LATS_MapLibre = maplibregl;
+    const style={
+      version:8,
+      sources:{
+        "esri-satellite":{
+          type:"raster",
+          tiles:["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],
+          tileSize:256,
+          maxzoom:19,
+          attribution:"Tiles © Esri"
+        },
+        "esri-places":{
+          type:"raster",
+          tiles:["https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"],
+          tileSize:256,
+          maxzoom:19,
+          attribution:"Place labels © Esri"
+        }
+      },
+      layers:[{
+        id:"satellite",
+        type:"raster",
+        source:"esri-satellite",
+        minzoom:0,
+        maxzoom:19
+      },{
+        id:"place-labels",
+        type:"raster",
+        source:"esri-places",
+        minzoom:0,
+        maxzoom:19,
+        paint:{"raster-opacity":0.95}
+      }]
+    };
+    earthMap=new maplibregl.Map({
+      container:"earthMap",
+      style:style,
+      center:[lon,lat],
+      zoom:2.2,
+      maxPitch:70,
+      minZoom:0,
+      maxZoom:19,
+      attributionControl:true,
+      dragRotate:true,
+      touchZoomRotate:true,
+      cooperativeGestures:false
+    });
+
+    earthMap.__latsMapLibre=maplibregl;
+    earthMap.on("style.load",()=>{
+      earthMap.setProjection({type:"globe"});
+      earthReady=true;
+      setTimeout(()=>{
+        earthMap.resize();
+        ensureEarthMarker();
+      },150);
+    });
+
+    earthMap.on("click",async e=>{
+      lat=e.lngLat.lat; lon=e.lngLat.lng;
+      locationName=`Selected point (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
+      setEarthMarker();
+      $("location").textContent=locationName;
+      if($("earthSuggestions")) $("earthSuggestions").innerHTML="";
+      await reverseGeocode(lat,lon);
+      selectedPlace=null;
+      showEarthPlaceCard(null);
+      updateEarthStatus(`Selected: ${locationName} • drag/zoom to explore nearby places`);
+      loadWeather();
+    });
+
+    earthMap.on("moveend",()=>{
+      if(earthMarker) setEarthMarker();
+    });
+  }catch(err){
+    $("error").style.display="block";
+    $("error").textContent="3D Earth could not load. Check your internet connection and try again.";
+  }
+}
+
+function setEarthMarker(){
+  if(!earthMap || !earthReady) return;
+  ensureEarthMarker();
+}
+async function ensureEarthMarker(){
+  if(!earthMap || !earthReady) return;
+  // Use MapLibre's Marker constructor through the module retained on the map instance.
+  const ml=earthMap.__latsMapLibre;
+  if(!ml) return;
+  if(!earthMarker){
+    const el=document.createElement("div");
+    el.style.cssText="width:24px;height:24px;border-radius:50%;background:#e53935;border:3px solid white;box-shadow:0 2px 10px #0008;position:relative";
+    el.title="Selected monitoring location";
+    earthMarker=new ml.Marker({element:el}).setLngLat([lon,lat]).addTo(earthMap);
+  }else{
+    earthMarker.setLngLat([lon,lat]);
+  }
+}
+
+async function toggleEarthView(){
+  const earth=document.getElementById("earthMap");
+  const normal=document.getElementById("map");
+  const btn=document.getElementById("earthBtn");
+  const inEarth=earth.classList.contains("active");
+  if(inEarth){
+    earth.classList.remove("active");
+    normal.style.display="";
+    document.body.classList.remove("earth-fullscreen");
+    if(btn) btn.textContent="🌐 3D Earth";
+    if(map) setTimeout(()=>map.invalidateSize({pan:false,animate:false}),120);
+    return;
+  }
+
+  earth.classList.add("active");
+  normal.style.display="none";
+  if(btn) btn.textContent="🗺️ Back to Map";
+  await initEarth();
+  if(earthMap){
+    earthMap.resize();
+    earthMap.jumpTo({center:[lon,lat],zoom:earthMap.getZoom()});
+    await ensureEarthMarker();
+  }
+}
+
+function toggleEarthFullscreen(){
+  document.body.classList.toggle("earth-fullscreen");
+  setTimeout(()=>earthMap && earthMap.resize(),200);
+}
+function setBaseLayer(type){
+  if(!map) return;
+  if(type==="satellite"){
+    if(streetLayer) map.removeLayer(streetLayer);
+    satelliteLayer.addTo(map);
+    $("satBtn").classList.add("active"); $("streetBtn").classList.remove("active");
+    currentBase="satellite";
+  }else{
+    if(satelliteLayer) map.removeLayer(satelliteLayer);
+    streetLayer.addTo(map);
+    $("streetBtn").classList.add("active"); $("satBtn").classList.remove("active");
+    currentBase="street";
+  }
+}
+
+function toggleFullscreenMap(){
+  document.body.classList.toggle("map-fullscreen");
+  // Leaflet must be told about the new viewport size after the CSS layout settles.
+  setTimeout(()=>{
+    if(map){
+      map.invalidateSize({pan:false,animate:false});
+      map.setView([lat,lon], Math.max(map.getZoom(), 5), {animate:false});
+    }
+  },120);
+  setTimeout(()=>map && map.invalidateSize({pan:false,animate:false}),500);
+  setTimeout(()=>map && map.invalidateSize({pan:false,animate:false}),1000);
+}
+
+
+function copyShareLink(){
+  const url=new URL(window.location.href);
+  url.searchParams.set("lat",lat.toFixed(6));
+  url.searchParams.set("lon",lon.toFixed(6));
+  url.searchParams.set("place",locationName);
+  navigator.clipboard?.writeText(url.toString()).then(()=>{
+    const old=$("updated").textContent; $("updated").textContent="Share link copied";
+    setTimeout(()=>$("updated").textContent=old,1800);
+  }).catch(()=>{
+    $("error").style.display="block";
+    $("error").textContent="Copy failed. Once hosted online, copy the page URL from your browser.";
+  });
+}
+
+function loadSharedLocation(){
+  const q=new URLSearchParams(window.location.search);
+  const a=parseFloat(q.get("lat")), b=parseFloat(q.get("lon"));
+  if(Number.isFinite(a)&&Number.isFinite(b)){
+    lat=a; lon=b; locationName=q.get("place")||`Shared location (${a.toFixed(4)}, ${b.toFixed(4)})`;
+  }
+}
+
+function initMap(){
+ map=L.map("map",{
+   worldCopyJump:true,
+   zoomControl:true,
+   dragging:true,
+   touchZoom:true,
+   scrollWheelZoom:true,
+   doubleClickZoom:true,
+   boxZoom:true,
+   keyboard:true,
+   tap:true,
+   inertia:true,
+   inertiaDeceleration:3000,
+   wheelDebounceTime:40,
+   wheelPxPerZoomLevel:90,
+   zoomAnimation:true,
+   fadeAnimation:true,
+   markerZoomAnimation:true
+ }).setView([lat,lon],5);
+
+ streetLayer=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+   maxZoom:19,attribution:'© OpenStreetMap contributors'
+ });
+
+ satelliteLayer=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{
+   maxZoom:19,attribution:'Tiles © Esri'
+ });
+
+ streetLayer.addTo(map);
+
+ marker=L.marker([lat,lon]).addTo(map).bindPopup("Selected monitoring location").openPopup();
+ riskCircle=L.circle([lat,lon],{radius:3500,color:"#0b7650",fillColor:"#0b7650",fillOpacity:.08,weight:2}).addTo(map);
+
+ map.on("click",e=>{
+   lat=e.latlng.lat; lon=e.latlng.lng;
+   locationName=`Selected point (${lat.toFixed(4)}, ${lon.toFixed(4)})`;
+   marker.setLatLng([lat,lon]);
+   marker.bindPopup("Selected monitoring location").openPopup();
+   if(riskCircle) riskCircle.setLatLng([lat,lon]);
+   else riskCircle=L.circle([lat,lon],{radius:3500,color:"#0b7650",fillColor:"#0b7650",fillOpacity:.08,weight:2}).addTo(map);
+   map.setView([lat,lon],Math.max(map.getZoom(),12));
+   reverseGeocode(lat,lon).then(()=>loadWeather());
+ });
+}
+
+async function reverseGeocode(a,b){
+ try{
+  const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${a}&lon=${b}`);
+  if(r.ok){
+    const d=await r.json();
+    locationName=d.display_name ? d.display_name.split(",").slice(0,4).join(",") : locationName;
+    $("location").textContent=locationName;
+  }
+ }catch(_){}
+}
+
+let suggestionTimer;
+
+async function geocodePlace(q, limit=8){
+ const url=`https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&namedetails=1&limit=${limit}&dedupe=1&accept-language=en&q=${encodeURIComponent(q)}`;
+ const r=await fetch(url,{headers:{"Accept":"application/json"}});
+ if(!r.ok) throw new Error("Geocoder unavailable");
+ return await r.json();
+}
+
+function placeLabel(p){
+ const a=p.address||{};
+ return a.village||a.hamlet||a.locality||a.suburb||a.neighbourhood||a.town||a.city||a.municipality||a.county||p.name||p.display_name.split(",")[0];
+}
+
+function placeDetail(p){
+ const a=p.address||{};
+ const parts=[a.village||a.hamlet||a.locality||a.suburb||a.neighbourhood||a.town||a.city||a.municipality,
+               a.state||a.region,a.country].filter(Boolean);
+ return [...new Set(parts)].join(", ");
+}
+
+function showSuggestions(results){
+ const box=$("suggestions");
+ if(!results.length){box.innerHTML="";return}
+ box.innerHTML='<div class="suggestions">'+results.map((p,i)=>
+   `<div class="suggestion" onclick="chooseSuggestion(${i})">
+      <b>${escapeHtml(placeLabel(p))}</b><span>${escapeHtml(placeDetail(p))}</span>
+    </div>`).join("")+'</div>';
+ window._placeResults=results;
+}
+
+function escapeHtml(s){
+ return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+}
+
+function chooseSuggestion(i){
+ const p=window._placeResults[i];
+ if(!p)return;
+ $("placeInput").value=placeLabel(p);
+ $("suggestions").innerHTML="";
+ selectPlace(p);
+}
+
+async function suggestPlaces(){
+ clearTimeout(suggestionTimer);
+ const q=$("placeInput").value.trim();
+ if(q.length<2){$("suggestions").innerHTML="";return}
+ suggestionTimer=setTimeout(async()=>{
+   try{
+     // Nominatim searches OSM's fine-grained place database, including
+     // villages, hamlets and localities where those features exist.
+     const results=await geocodePlace(q,8);
+     showSuggestions(results);
+   }catch(_){$("suggestions").innerHTML="";}
+ },350);
+}
+
+function selectPlace(p){
+ selectedPlace=p;
+ lat=parseFloat(p.lat); lon=parseFloat(p.lon);
+ locationName=p.display_name.split(",").slice(0,5).join(",");
+ $("location").textContent=locationName;
+ if(map && marker){
+   map.setView([lat,lon],14);
+   marker.setLatLng([lat,lon]).bindPopup(`<b>${escapeHtml(placeLabel(p))}</b><br>${escapeHtml(placeDetail(p))}`).openPopup();
+ }
+ flyToSelected();
+ loadWeather();
+}
+
+async function searchPlace(){
+ const q=$("placeInput").value.trim();
+ if(!q)return;
+ $("suggestions").innerHTML="";
+ $("location").textContent="Searching…";
+ try{
+   const results=await geocodePlace(q,8);
+   if(!results.length) throw new Error("Place not found");
+   // Prefer the first exact/most relevant result; the dropdown still exposes
+   // the other nearby small-place matches.
+   selectPlace(results[0]);
+ }catch(e){
+   $("error").style.display="block";
+   $("error").textContent="Couldn't find that place in OpenStreetMap. Try adding the district/state/country.";
+ }
+}
+let earthSuggestionTimer;
+
+function updateEarthStatus(msg){
+  const el=$("earthStatus");
+  if(el) el.textContent=msg;
+}
+
+function showEarthPlaceCard(p){
+  selectedPlace=p||selectedPlace;
+  const card=$("earthPlaceCard");
+  if(!card)return;
+  const name=p ? placeLabel(p) : (locationName.split(",")[0]||"Selected place");
+  const address=p ? placeDetail(p) : locationName;
+  $("earthPlaceName").textContent=name;
+  $("earthPlaceAddress").textContent=address||locationName;
+  $("earthPlaceMeta").textContent=`${lat.toFixed(5)}, ${lon.toFixed(5)} • Drag the Earth to explore nearby areas`;
+  card.classList.add("show");
+}
+
+function openDirections(){
+  window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat.toFixed(6)},${lon.toFixed(6)}`,"_blank");
+}
+
+async function exploreNearby(){
+  if(!Number.isFinite(lat)||!Number.isFinite(lon))return;
+  const strip=$("nearbyStrip");
+  strip.innerHTML='<span class="nearbyChip">Finding nearby places…</span>';
+  try{
+    const delta=0.035;
+    const url=`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=10&addressdetails=1&namedetails=1&bounded=1&viewbox=${lon-delta},${lat+delta},${lon+delta},${lat-delta}&q=place`;
+    const r=await fetch(url,{headers:{"Accept":"application/json"}});
+    const results=r.ok?await r.json():[];
+    const unique=[]; const seen=new Set();
+    for(const x of results){const n=placeLabel(x);if(!seen.has(n.toLowerCase())&&Math.abs(+x.lat-lat)+Math.abs(+x.lon-lon)>0.001){seen.add(n.toLowerCase());unique.push(x)}}
+    strip.innerHTML=unique.slice(0,8).map(x=>`<button class="nearbyChip" onclick='jumpToPlace(${JSON.stringify(x).replace(/'/g,"&#39;")})'>${escapeHtml(placeLabel(x))}</button>`).join("") || '<span class="nearbyChip">No nearby mapped places found</span>';
+  }catch(_){strip.innerHTML='<span class="nearbyChip">Nearby search unavailable</span>';}
+}
+
+function jumpToPlace(p){
+  selectPlace(p);
+  showEarthPlaceCard(p);
+}
+
+function flyToSelected(){
+  if(!earthMap || !earthReady) return;
+  // Zoom much closer after a search so the selected locality is actually visible.
+  const targetZoom=Math.max(14,Math.min(16,earthMap.getZoom()));
+  earthMap.flyTo({center:[lon,lat],zoom:targetZoom,speed:0.75,curve:1.35,essential:true});
+  ensureEarthMarker();
+  if(selectedPlace) showEarthPlaceCard(selectedPlace);
+  updateEarthStatus(`Selected: ${locationName} • explore nearby areas by dragging and zooming`);
+}
+
+function showEarthSuggestions(results){
+  const box=$("earthSuggestions");
+  if(!results.length){box.innerHTML="";return}
+  window._earthResults=results;
+  box.innerHTML='<div class="earthSuggestions">'+results.map((p,i)=>
+    `<div class="earthSuggestion" onclick="chooseEarthSuggestion(${i})"><b>${escapeHtml(placeLabel(p))}</b><span>${escapeHtml(placeDetail(p) || p.display_name)}</span></div>`
+  ).join("")+'</div>';
+}
+
+function chooseEarthSuggestion(i){
+  const p=window._earthResults?.[i];
+  if(!p)return;
+  $("earthPlaceInput").value=placeLabel(p);
+  $("earthSuggestions").innerHTML="";
+  selectPlace(p);
+}
+
+async function suggestEarthPlaces(){
+  clearTimeout(earthSuggestionTimer);
+  const q=$("earthPlaceInput").value.trim();
+  if(q.length<2){$("earthSuggestions").innerHTML="";return}
+  earthSuggestionTimer=setTimeout(async()=>{
+    try{
+      const results=await geocodePlace(q,7);
+      showEarthSuggestions(results);
+    }catch(_){ $("earthSuggestions").innerHTML=""; }
+  },300);
+}
+
+async function searchEarthPlace(){
+  const q=$("earthPlaceInput").value.trim();
+  if(!q)return;
+  $("earthSuggestions").innerHTML="";
+  updateEarthStatus("Searching Earth…");
+  try{
+    const results=await geocodePlace(q,8);
+    if(!results.length) throw new Error("Place not found");
+    selectPlace(results[0]);
+  }catch(e){
+    updateEarthStatus("Place not found. Try adding district, state or country.");
+  }
+}
+
+function locateOnEarth(){
+  if(!navigator.geolocation){updateEarthStatus("GPS is not available in this browser.");return;}
+  updateEarthStatus("Getting your location…");
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    lat=pos.coords.latitude; lon=pos.coords.longitude; locationName="Your current location";
+    await reverseGeocode(lat,lon);
+    if($("earthPlaceInput")) $("earthPlaceInput").value=placeLabel({address:{},name:locationName,display_name:locationName});
+    flyToSelected();
+    showEarthPlaceCard(null);
+    loadWeather();
+  },()=>updateEarthStatus("Location permission was not granted."),{enableHighAccuracy:true,timeout:10000,maximumAge:60000});
+}
+
+function useLocation(){
+ if(!navigator.geolocation){loadWeather();return}
+ $("location").textContent="Requesting GPS location…";
+ navigator.geolocation.getCurrentPosition(async pos=>{
+   lat=pos.coords.latitude; lon=pos.coords.longitude; locationName="Your current location";
+   map.setView([lat,lon],11);
+   marker.setLatLng([lat,lon]).bindPopup("Your current location").openPopup();
+   if(riskCircle) riskCircle.setLatLng([lat,lon]);
+   await reverseGeocode(lat,lon);
+   loadWeather();
+ },()=>{
+   locationName="Kozhikode, Kerala (fallback)";
+   $("location").textContent=locationName;
+   loadWeather();
+ },{enableHighAccuracy:true,timeout:10000,maximumAge:300000});
+}
+
+
+function riskColor(p){
+  return p>=85?"#d13c3c":p>=65?"#d88717":p>=35?"#b39b17":"#22a06b";
+}
+
+function drawRainChart(past, future){
+  const svg=$("rainChart");
+  const all=[...past,...future];
+  const max=Math.max(1,...all)*1.15;
+  const W=600,H=180,L=30,R=8,T=12,B=28;
+  const innerW=W-L-R, innerH=H-T-B;
+  const pts=all.map((v,i)=>{
+    const x=L+(i/(Math.max(1,all.length-1)))*innerW;
+    const y=T+innerH-(v/max)*innerH;
+    return [x,y];
+  });
+  const path=pts.map((p,i)=>(i?"L":"M")+p[0].toFixed(1)+" "+p[1].toFixed(1)).join(" ");
+  const split=pts[Math.max(0,past.length-1)]?.[0]||L;
+  svg.innerHTML=
+    `<line x1="${L}" y1="${T+innerH}" x2="${W-R}" y2="${T+innerH}" stroke="#d9e3df"/>
+     <line x1="${split}" y1="${T}" x2="${split}" y2="${T+innerH}" stroke="#b8c8c1" stroke-dasharray="4 4"/>
+     <text x="${L}" y="${H-6}" font-size="10" fill="#718087">Past</text>
+     <text x="${Math.min(W-65,split+6)}" y="${H-6}" font-size="10" fill="#718087">Forecast</text>
+     <path d="${path}" fill="none" stroke="#0b7650" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
+}
+
+function drawTimeline(values){
+  const box=$("timeline");
+  box.innerHTML="";
+  const labels=["Now","+4h","+8h","+12h","+18h","+24h"];
+  values.forEach((v,i)=>{
+    const el=document.createElement("div"); el.className="tItem";
+    const color=riskColor(v);
+    el.innerHTML=`<div class="tBar"><div class="tFill" style="height:${Math.max(4,v)}%;background:${color}"></div></div><div class="tPct">${v}%</div><div>${labels[i]}</div>`;
+    box.appendChild(el);
+  });
+}
+
+function buildRiskTimeline(hourly, currentRisk){
+  if(!hourly || !hourly.precipitation) return;
+  const nowIndex=0;
+  const samples=[0,4,8,12,18,23].map((offset,i)=>{
+    const rain=hourly.precipitation.slice(nowIndex+1,nowIndex+1+offset+1).reduce((a,b)=>a+(b||0),0);
+    const slice=hourly.soil_moisture_0_to_10cm.slice(nowIndex,nowIndex+offset+1);
+    const soil=(slice.length?slice[slice.length-1]:0)*100;
+    const humidity=hourly.relative_humidity_2m ? hourly.relative_humidity_2m[Math.min(nowIndex+offset,hourly.relative_humidity_2m.length-1)] : 70;
+    return Math.round(Math.min(100, Math.max(0, calcRisk(hourly.precipitation[nowIndex]||0,rain,soil,humidity))));
+  });
+  samples[0]=currentRisk;
+  drawTimeline(samples);
+}
+
+function updateAlerts(risk, rain24, weatherCode){
+  const [icon,desc]=weatherInfo(weatherCode);
+  if(risk>=65){
+    alertHistory.unshift({type:"high",title:"Elevated risk conditions",text:`${icon} ${desc}. Weather indicators produced a ${risk}% prototype risk score.`});
+  }else if(risk>=35){
+    alertHistory.unshift({type:"info",title:"Monitoring level",text:`Weather indicators are being monitored. Current prototype score: ${risk}%.`});
+  }else{
+    alertHistory.unshift({type:"low",title:"Conditions currently low",text:`${icon} ${desc}. Current prototype score: ${risk}%.`});
+  }
+  alertHistory=alertHistory.slice(0,3);
+  $("alerts").innerHTML=alertHistory.map(a=>`<div class="alertItem alert${a.type==="high"?"High":a.type==="low"?"Low":"Info"}"><b>${a.title}</b><br>${a.text}</div>`).join("");
+}
+
+function showTerrainInfo(){
+  $("riskNote").textContent="Terrain layer: use the selected map point together with slope/elevation data when the field-data backend is connected.";
+  $("riskLayerBtn").classList.remove("active");
+}
+function showSensorInfo(){
+  $("riskNote").textContent="Sensor layer: physical ESP32/rain/soil stations are currently shown as DEMO until connected.";
+  $("riskLayerBtn").classList.remove("active");
+}
+function toggleRiskLayer(){
+  $("riskLayerBtn").classList.add("active");
+  $("riskNote").textContent="Risk zone layer is active. The selected location's current model status is shown above.";
+}
+async function loadWeather(){
+ $("error").style.display="none";
+ $("weatherText").textContent="Updating…";
+ try{
+  const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,precipitation,weather_code,wind_speed_10m,soil_moisture_0_to_10cm&hourly=precipitation,precipitation_probability,soil_moisture_0_to_10cm,relative_humidity_2m&past_days=1&forecast_days=2&timezone=auto`;
+  const res=await fetch(url,{cache:"no-store"});
+  if(!res.ok) throw new Error("Weather service unavailable");
+  const d=await res.json(), c=d.current;
+  const now=new Date(c.time), start=new Date(d.hourly.time[0]);
+  let idx=Math.max(0,Math.min(d.hourly.time.length-1,Math.round((now-start)/3600000)));
+  let next24=d.hourly.precipitation.slice(idx,idx+24).reduce((a,b)=>a+(b||0),0);
+  let soil=Math.max(0,Math.min(100,(c.soil_moisture_0_to_10cm||0)*100));
+  let [icon,desc]=weatherInfo(c.weather_code);
+  $("location").textContent=locationName;
+  $("weatherIcon").textContent=icon; $("temp").textContent=Math.round(c.temperature_2m)+"°C"; $("weatherText").textContent=desc;
+  $("rain1").textContent=(c.precipitation||0).toFixed(1)+" mm";
+  $("rain24").textContent=next24.toFixed(1)+" mm";
+  $("humidity").textContent=Math.round(c.relative_humidity_2m)+"%";
+  $("soil").textContent=Math.round(soil)+"%";
+  $("wind").textContent=Math.round(c.wind_speed_10m)+" km/h";
+  $("code").textContent=c.weather_code;
+  const currentRisk=calcRisk(c.precipitation||0,next24,soil,c.relative_humidity_2m);
+  renderRisk(currentRisk);
+  latestForecast=d;
+  loadForecast();
+  loadNews({silent:true});
+  renderHelplines();
+  const past=d.hourly.precipitation.slice(Math.max(0,idx-12),idx+1);
+  const future=d.hourly.precipitation.slice(idx+1,idx+25);
+  drawRainChart(past,future);
+  buildRiskTimeline(d.hourly,currentRisk);
+  updateAlerts(currentRisk,next24,c.weather_code);
+  $("updated").textContent="Updated "+new Date().toLocaleTimeString();
+ }catch(e){
+  $("error").style.display="block";
+  $("error").textContent="Could not load live weather. Check your internet connection and tap Refresh.";
+  $("weatherText").textContent="Weather unavailable";
+ }
+}
+
+
+
+function escHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function countryFromSelected(){
+  const a=selectedPlace&&selectedPlace.address?selectedPlace.address:{};
+  return String(a.country||'').toLowerCase();
+}
+function selectedSearchName(){
+  if(selectedPlace){ return selectedPlace.name || selectedPlace.display_name || locationName || 'selected location'; }
+  return locationName || 'selected location';
+}
+function openWeatherDetails(){
+  const url=`https://news.google.com/search?q=${encodeURIComponent(selectedSearchName()+' weather rain rainfall thunderstorm flood')}`;
+  window.open(url,'_blank');
+}
+async function refreshForecast(){ await loadWeather(); }
+function forecastDayLabel(dateStr,i){
+  if(i===0)return 'Today';
+  if(i===1)return 'Tomorrow';
+  return new Date(dateStr+'T12:00:00').toLocaleDateString(undefined,{weekday:'short'});
+}
+function weatherIconFromCode(c){return weatherInfo(c)[0]||'🌤️';}
+function renderForecast(d){
+  if(!d.daily){return;}
+  const out=[];
+  for(let i=0;i<Math.min(7,d.daily.time.length);i++){
+    const rain=d.daily.precipitation_sum?.[i]??0;
+    const pop=d.daily.precipitation_probability_max?.[i];
+    const icon=weatherIconFromCode(d.daily.weather_code?.[i]);
+    out.push(`<div class="forecastDay"><div class="day">${forecastDayLabel(d.daily.time[i],i)}</div><div class="ficon">${icon}</div><div class="temps">${Math.round(d.daily.temperature_2m_max?.[i]??0)}° / ${Math.round(d.daily.temperature_2m_min?.[i]??0)}°</div><div class="rain">💧 ${Number(rain).toFixed(1)} mm${pop!=null?' · '+Math.round(pop)+'%':''}</div></div>`);
+  }
+  $("forecastGrid").innerHTML=out.join('');
+  $("forecastLocation").textContent='7-day forecast for '+selectedSearchName();
+}
+async function loadForecast(){
+  try{
+    const url=`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max&forecast_days=7&timezone=auto`;
+    const r=await fetch(url,{cache:'no-store'}); if(!r.ok) throw new Error();
+    const d=await r.json(); renderForecast(d);
+  }catch(e){$("forecastGrid").innerHTML='<div class="sectionBusy">Forecast is temporarily unavailable. Try refresh.</div>';}
+}
+function openGoogleNews(){
+  const q=selectedSearchName()+' weather rain rainfall thunderstorm flood';
+  window.open('https://news.google.com/search?q='+encodeURIComponent(q),'_blank');
+}
+let newsSeen=new Set();
+let newsQueue=[];
+let newsToastTimer=null;
+let newsFirstLoad=true;
+let newsLastPlaceKey='';
+
+function newsPlaceKey(){
+  return `${selectedSearchName()}|${Number(lat).toFixed(3)}|${Number(lon).toFixed(3)}`;
+}
+function articleKey(a){ return String(a.url||a.title||'').trim(); }
+function articleDate(a){
+  const raw=a.seendate||a.datetime||a.date||'';
+  if(!raw) return '';
+  const d=new Date(raw);
+  return Number.isNaN(d.getTime()) ? String(raw) : d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+}
+function showLiveNewsToast(a){
+  const host=$('liveNewsTicker'); if(!host) return;
+  if(newsToastTimer) clearTimeout(newsToastTimer);
+  host.innerHTML=`<div class="liveNewsToast" role="status" onclick="openLiveNewsToast()">
+    <div class="toastTop"><span class="pulse"></span><b>LOCAL WEATHER</b><span>·</span><span>${escHtml(selectedSearchName())}</span></div>
+    <div class="toastTitle">${escHtml(a.title||'New weather update for '+selectedSearchName())}</div>
+    <div class="toastSource">${escHtml(a.domain||'News source')}${articleDate(a)?' · '+escHtml(articleDate(a)):''}</div>
+  </div>`;
+  host.dataset.url=a.url||'';
+  const node=host.firstElementChild;
+  newsToastTimer=setTimeout(()=>{
+    node?.classList.add('hide');
+    setTimeout(()=>{ if(host.firstElementChild===node) host.innerHTML=''; },500);
+  },7000);
+}
+function openLiveNewsToast(){
+  const host=$('liveNewsTicker'); const url=host?.dataset?.url;
+  if(url) window.open(url,'_blank','noopener');
+}
+function playNextNewsToast(){
+  if(!newsQueue.length) return;
+  const a=newsQueue.shift();
+  showLiveNewsToast(a);
+}
+function regionInfo(){
+  const a=selectedPlace&&selectedPlace.address?selectedPlace.address:{};
+  const country=String(a.country||'').toLowerCase();
+  const state=String(a.state||a.region||'').toLowerCase();
+  const district=String(a.county||a.state_district||a.district||'').toLowerCase();
+  const city=String(a.city||a.town||a.village||a.municipality||'').toLowerCase();
+  const india=country.includes('india') || /india|kerala|palakkad|kozhikode|calicut/i.test(selectedSearchName());
+  if(!india) return {india:false,state, district, city, station:'Regional source', live:'https://newsonair.gov.in/access-bulletins-from-cities/', bulletin:'https://newsonair.gov.in/access-bulletins-from-cities/', imd:'https://mausam.imd.gov.in/'};
+  const keralaDistricts={
+    'kasaragod':'Kannur','kasargode':'Kannur','kannur':'Kannur','wayanad':'Calicut','kozhikode':'Calicut','calicut':'Calicut','malappuram':'Manjeri','palakkad':'Thrissur','thrissur':'Thrissur','ernakulam':'Kochi','kochi':'Kochi','idukki':'Devikulam','kottayam':'Kochi','alappuzha':'Kochi','pathanamthitta':'Thiruvananthapuram','kollam':'Thiruvananthapuram','thiruvananthapuram':'Thiruvananthapuram'};
+  if(state.includes('kerala') || /kerala|palakkad|kozhikode|calicut/i.test(selectedSearchName())){
+    const station=keralaDistricts[district]||keralaDistricts[city]||'Kerala';
+    const slug=station.toLowerCase().replace(/[^a-z]+/g,'');
+    const liveMap={Calicut:'https://akashvani.gov.in/radio/live.php?channel=265',Kochi:'https://akashvani.gov.in/radio/live.php',Manjeri:'https://akashvani.gov.in/radio/live.php',Devikulam:'https://akashvani.gov.in/radio/live.php',Thrissur:'https://akashvani.gov.in/radio/live.php',Kannur:'https://akashvani.gov.in/radio/live.php',Thiruvananthapuram:'https://akashvani.gov.in/radio/live.php',Kerala:'https://akashvani.gov.in/radio/live.php'};
+    const bulletinMap={Calicut:'https://newsonair.gov.in/bulletins-city/calicut/',Thiruvananthapuram:'https://newsonair.gov.in/bulletins-city/thiruvananthapuram/',Kerala:'https://newsonair.gov.in/bulletins-city/malayalam/'};
+    return {india:true,state,district,city,station,live:liveMap[station]||liveMap.Kerala,bulletin:bulletinMap[station]||bulletinMap.Kerala,imd:'https://mausam.imd.gov.in/thiruvananthapuram/'};
+  }
+  const stationMap={
+    'karnataka':'Bengaluru','tamil nadu':'Chennai','maharashtra':'Mumbai','west bengal':'Kolkata','telangana':'Hyderabad','andhra pradesh':'Vijayawada','odisha':'Bhubaneswar','assam':'Guwahati','gujarat':'Ahmedabad','rajasthan':'Jaipur','delhi':'Delhi','uttar pradesh':'Lucknow','bihar':'Patna','jharkhand':'Ranchi','punjab':'Chandigarh','haryana':'Chandigarh','uttarakhand':'Dehradun','himachal pradesh':'Shimla','goa':'Panaji','madhya pradesh':'Bhopal','chhattisgarh':'Raipur','jammu and kashmir':'Srinagar','jammu & kashmir':'Srinagar','sikkim':'Gangtok','meghalaya':'Shillong','nagaland':'Kohima','manipur':'Imphal','mizoram':'Aizawl','tripura':'Agartala','arunachal pradesh':'Itanagar','assam':'Guwahati'};
+  const station=stationMap[state]||city||state||'Regional';
+  return {india:true,state,district,city,station,live:'https://akashvani.gov.in/radio/live.php',bulletin:'https://newsonair.gov.in/access-bulletins-from-cities/',imd:'https://mausam.imd.gov.in/'};
+}
+function renderRegionalSources(){
+  const r=regionInfo();
+  const loc=selectedSearchName();
+  const station=r.station||'Regional';
+  $('regionalSourceText').textContent=r.india?`Official regional sources for ${loc} · nearest/most relevant station: Akashvani ${station}`:`Official regional radio/news sources for ${loc}`;
+  const cards=[];
+  if(r.india){
+    cards.push(`<div class="regionalSource"><div class="station">AKASHVANI / AIR</div><b>📻 ${escHtml(station)} live radio</b><span>Listen to the official regional/national AIR stream.</span><a href="${escHtml(r.live)}" target="_blank" rel="noopener">Listen live</a><a class="alt" href="${escHtml(r.bulletin)}" target="_blank" rel="noopener">Bulletins</a></div>`);
+    cards.push(`<div class="regionalSource"><div class="station">AKASHVANI NEWS</div><b>📰 Regional news bulletins</b><span>Official city/language bulletins from Prasar Bharati.</span><a href="${escHtml(r.bulletin)}" target="_blank" rel="noopener">Open updates</a></div>`);
+    cards.push(`<div class="regionalSource"><div class="station">IMD</div><b>🌧️ Official weather warning</b><span>District/subdivision warnings, nowcast and rainfall information.</span><a href="${escHtml(r.imd)}" target="_blank" rel="noopener">Open IMD</a></div>`);
+  } else {
+    cards.push(`<div class="regionalSource"><div class="station">RADIO / NEWS</div><b>📻 Regional bulletins</b><span>Find official public-service radio and news bulletins for this location.</span><a href="${escHtml(r.live)}" target="_blank" rel="noopener">Open sources</a></div>`);
+    cards.push(`<div class="regionalSource"><div class="station">WEATHER</div><b>🌧️ Official weather</b><span>Open the meteorological service for the selected country.</span><a href="${escHtml(r.imd)}" target="_blank" rel="noopener">Open weather</a></div>`);
+  }
+  $('regionalSourceGrid').innerHTML=cards.join('');
+}
+function officialNewsQueries(name){
+  const r=regionInfo();
+  const q1=`"${name}" (weather OR rain OR rainfall OR thunderstorm OR flood OR cyclone OR storm OR heatwave OR temperature OR monsoon) domainis:newsonair.gov.in`;
+  const q2=`"${name}" (weather OR rain OR rainfall OR thunderstorm OR flood OR cyclone OR storm OR heatwave OR temperature OR monsoon) (Akashvani OR "All India Radio")`;
+  return [q1,q2];
+}
+async function loadNews(opts={}){
+  const name=selectedSearchName();
+  const placeKey=newsPlaceKey();
+  const changedPlace=placeKey!==newsLastPlaceKey;
+  if(changedPlace){newsSeen=new Set();newsQueue=[];newsFirstLoad=true;newsLastPlaceKey=placeKey;}
+  if(!opts.silent){
+    $('newsLocation').textContent='Local weather reports + official regional sources for '+name+' · checking about every 60 seconds';
+    $('newsList').innerHTML='<div class="sectionBusy">Checking local weather and regional bulletin sources…</div>';
+    renderRegionalSources();
+  }
+  try{
+    const terms='(weather OR rain OR rainfall OR thunderstorm OR flood OR cyclone OR storm OR heatwave OR temperature OR monsoon OR IMD OR warning OR forecast)';
+    const queries=[`"${name}" ${terms}`, ...officialNewsQueries(name)];
+    const all=[]; const seenUrls=new Set();
+    for(const rawQ of queries){
+      const q=encodeURIComponent(rawQ);
+      const url=`https://api.gdeltproject.org/api/v2/doc/doc?query=${q}&mode=artlist&maxrecords=20&timespan=24h&sort=datedesc&format=json`;
+      try{const r=await fetch(url,{cache:'no-store'});if(!r.ok)continue;const d=await r.json();for(const a of (d.articles||[])){const k=articleKey(a);if(k&&!seenUrls.has(k)){seenUrls.add(k);all.push(a);}}}catch(_e){}
+    }
+    all.sort((a,b)=>String(b.seendate||b.datetime||'').localeCompare(String(a.seendate||a.datetime||'')));
+    const arts=all.slice(0,15);
+    if(!arts.length){
+      if(!opts.silent)$('newsList').innerHTML='<div class="sectionBusy">No indexed local weather story was found right now. Official regional radio/bulletin links are available below.</div>';
+    }else{
+      $('newsList').innerHTML=arts.slice(0,8).map(a=>{const title=a.title||'Weather report';const url=a.url||'#';const domain=a.domain||'';const date=a.seendate||'';return `<a class="newsItem" href="${escHtml(url)}" target="_blank" rel="noopener"><b>${escHtml(title)}</b><div class="newsMeta">${escHtml(domain)}${date?' · '+escHtml(date):''}</div></a>`;}).join('');
+      const fresh=arts.filter(a=>{const k=articleKey(a);if(!k||newsSeen.has(k))return false;newsSeen.add(k);return true;});
+      if(newsFirstLoad){newsFirstLoad=false;newsQueue=fresh.slice(0,4);playNextNewsToast();if(newsQueue.length)setTimeout(playNextNewsToast,7500);if(newsQueue.length>1)setTimeout(playNextNewsToast,15000);if(newsQueue.length>2)setTimeout(playNextNewsToast,22500);}
+      else if(fresh.length){newsQueue.push(...fresh.slice(0,3));if(!$('liveNewsTicker')?.firstElementChild)playNextNewsToast();}
+    }
+  }catch(e){if(!opts.silent)$('newsList').innerHTML='<div class="sectionBusy">Live feed unavailable right now. Official radio and bulletin sources remain available below.</div>';}
+}
+
+function renderHelplines(){
+  const country=countryFromSelected();
+  const india=country.includes('india') || /india|kerala|palakkad|kozhikode/i.test(selectedSearchName());
+  const items=india?[
+    ['🚨 Emergency','112','Police, fire and ambulance emergency response','tel:112'],
+    ['🚑 Ambulance','108','Emergency medical service','tel:108'],
+    ['🔥 Fire','101','Fire and rescue service','tel:101'],
+    ['👮 Police','100','Police emergency number','tel:100'],
+    ['👧 Child Helpline','1098','24×7 Government child helpline','tel:1098'],
+    ['👩 Women Helpline','181','Government women helpline','tel:181'],
+    ['🌪️ NDMA Control Room','+91-11-26701728','National disaster management control room','tel:+911126701728'],
+    ['🌐 SACHET alerts','SACHET','Official geo-targeted disaster alerts, forecasts and helplines','https://sachet.ndma.gov.in/']
+  ]:[
+    ['🚨 Emergency','Local emergency service','Use the emergency number for your country/region','https://www.google.com/search?q='+encodeURIComponent('emergency number '+selectedSearchName())],
+    ['📰 Local news','Google News','Search current news for this location','https://news.google.com/search?q='+encodeURIComponent(selectedSearchName())],
+    ['🌍 Government help','Local authorities','Find the official government emergency/service directory','https://www.google.com/search?q='+encodeURIComponent('official government helpline '+selectedSearchName())],
+    ['🏥 Medical','Nearest emergency care','Find nearby emergency medical services','https://www.google.com/maps/search/?api=1&query='+encodeURIComponent('hospital near '+selectedSearchName())]
+  ];
+  $("helpLocation").textContent=india?'India emergency and support contacts':'Global contacts vary by country — showing location-specific guidance.';
+  $("helpGrid").innerHTML=items.map(x=>`<div class="helpItem"><b>${escHtml(x[0])}</b><span><strong>${escHtml(x[1])}</strong> · ${escHtml(x[2])}</span><a href="${escHtml(x[3])}" ${x[3].startsWith('http')?'target="_blank" rel="noopener"':''}>${x[3].startsWith('tel:')?'Call':'Open'}</a></div>`).join('');
+}
+function refreshLocationServices(){
+  renderForecastFallback();
+  renderRegionalSources();
+  loadForecast();
+  loadNews();
+  renderHelplines();
+}
+function renderForecastFallback(){
+  $("forecastLocation").textContent='Forecast for '+selectedSearchName();
+}
+
+loadSharedLocation();
+initMap();
+initEarth().then(()=>{
+  if(earthMap){
+    earthMap.resize();
+    const q=new URLSearchParams(window.location.search);
+    if(q.get("lat") && q.get("lon")){
+      selectedPlace={lat:String(lat),lon:String(lon),name:locationName,display_name:locationName,address:{}};
+      flyToSelected();
+    }
+  }
+});
+window.addEventListener('resize',()=>{
+  if(map) setTimeout(()=>map.invalidateSize({pan:false,animate:false}),150);
+  if(earthMap) setTimeout(()=>earthMap.resize(),150);
+});
+window.addEventListener('orientationchange',()=>{
+  setTimeout(()=>{ if(map) map.invalidateSize({pan:false,animate:false}); if(earthMap) earthMap.resize(); },400);
+});
+loadWeather();
+loadPhysicalStation();
+renderHelplines();
+setInterval(loadWeather,10*60*1000);
+// Poll recent local weather/news frequently; only genuinely new stories become short 8-second toasts.
+renderRegionalSources();
+setInterval(()=>loadNews({silent:true}),60*1000);
+</script>
+
+<script>
+// ===== Real public weather-station network + free weather fallback =====
+// openSenseMap = actual public sensor stations. Open-Meteo = reliable global
+// weather API/model data used as a separate fallback; it is never mislabeled as
+// a physical station.
+let publicStationsTimer=null;
+let publicStationState={stations:[],best:null,rain:null,soil:null,weather:null};
+const PUBLIC_RADII_KM=[50,150,500,1500];
+
+function publicStationAge(ts){
+  if(!ts) return Infinity;
+  const t=new Date(ts).getTime();
+  return Number.isFinite(t)?Math.max(0,(Date.now()-t)/1000):Infinity;
+}
+function publicStationStatus(ts){
+  const age=publicStationAge(ts);
+  if(age<=30*60) return 'LIVE';
+  if(age<=6*60*60) return 'RECENT';
+  if(age<=24*60*60) return 'STALE';
+  return 'OFFLINE';
+}
+function publicSensorType(sensor){
+  const t=((sensor.title||'')+' '+(sensor.unit||'')+' '+(sensor.sensorType||'')).toLowerCase();
+  if(/rain|rainfall|precip|niederschlag|regen|pluvio/.test(t)) return 'rain';
+  if(/soil.*moist|moist.*soil|soilfeuchte|bodenfeuchte|volumetric.*water|vwc/.test(t)) return 'soil';
+  if(/temperature|temperatur|temp\b/.test(t)) return 'temperature';
+  if(/humidity|feuchte|relative humidity|rh\b/.test(t)) return 'humidity';
+  if(/pressure|druck|barometer|barometric/.test(t)) return 'pressure';
+  if(/wind.*speed|windspeed|windgeschwindigkeit/.test(t)) return 'wind';
+  if(/wind.*direction|windrichtung/.test(t)) return 'winddir';
+  return null;
+}
+function publicSensorValue(sensor){
+  const lm=sensor.lastMeasurement||sensor.last_measurement;
+  if(!lm || lm.value===undefined || lm.value===null) return null;
+  const n=Number(lm.value); return Number.isFinite(n)?n:null;
+}
+function publicSensorTime(sensor){
+  const lm=sensor.lastMeasurement||sensor.last_measurement;
+  return lm?.createdAt || lm?.timestamp || null;
+}
+function publicStationDistance(lat1,lon1,lat2,lon2){
+  const R=6371,dLat=(lat2-lat1)*Math.PI/180,dLon=(lon2-lon1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+function publicSensorLabel(type){
+  return ({rain:'🌧️ rain',soil:'🌱 soil moisture',temperature:'🌡️ temperature',humidity:'💧 humidity',pressure:'📊 pressure',wind:'💨 wind',winddir:'🧭 wind direction'})[type]||'weather';
+}
+function renderPublicStations(){
+  const badge=$('publicStationBadge'),list=$('publicStationList');
+  const best=publicStationState.best,r=publicStationState.rain,so=publicStationState.soil,w=publicStationState.weather;
+  if(!best){badge.textContent=w?'WEATHER API':'NO STATION';badge.className='publicBadge '+(w?'stale':'none');}
+  else {const st=publicStationStatus(best.updatedAt);badge.textContent=st;badge.className='publicBadge'+(st==='LIVE'?'':' stale');}
+  if(r){$('publicRainValue').textContent=Number(r.value).toFixed(2)+' '+(r.unit||'mm');$('publicRainSource').textContent=`${r.stationName} · ${publicStationStatus(r.timestamp)} · ${r.distance_km.toFixed(1)} km`;} 
+  else {$('publicRainValue').textContent=w?.rain!=null?Number(w.rain).toFixed(2)+' mm':'--';$('publicRainSource').textContent=w?.rain!=null?'Open-Meteo precipitation · weather data, not a physical gauge':'No public rain-gauge observation found';}
+  if(so){$('publicSoilValue').textContent=Number(so.value).toFixed(1)+' '+(so.unit||'%');$('publicSoilSource').textContent=`${so.stationName} · ${publicStationStatus(so.timestamp)} · ${so.distance_km.toFixed(1)} km`;} 
+  else {$('publicSoilValue').textContent=w?.soil!=null?Number(w.soil).toFixed(1)+'%':'--';$('publicSoilSource').textContent=w?.soil!=null?'Open-Meteo modelled soil moisture · not a physical sensor':'No public soil-moisture observation found';}
+  list.innerHTML=(publicStationState.stations||[]).slice(0,8).map(st=>{
+    const types=(st.observations||[]).map(o=>publicSensorLabel(o.type));
+    const obs=st.observations||[]; const age=publicStationStatus(st.updatedAt);
+    const vals=obs.slice(0,5).map(o=>`${publicSensorLabel(o.type)} ${Number(o.value).toFixed(1)} ${o.unit||''}`).join(' · ');
+    return `<div class="publicStationItem"><b>📡 ${escHtml(st.name||'Public weather station')}</b><span>${Number(st.distance_km).toFixed(1)} km away · ${escHtml(types.length?types.join(' + '):'public observations')} · ${age}</span>${vals?`<div style="margin-top:6px;color:#24352d">${escHtml(vals)}</div>`:''}<br><a href="https://opensensemap.org/explore/${encodeURIComponent(st.id)}" target="_blank" rel="noopener">Open real station ↗</a></div>`;
+  }).join('');
+  const old=$('publicFallbackBox'); if(old) old.remove();
+  if(w){
+    const box=document.createElement('div');box.id='publicFallbackBox';box.className='publicFallback';
+    box.innerHTML=`<b>Global weather fallback</b><span class="sourceBadge">Open-Meteo</span><br>When no nearby physical public station reports a measurement, LATS still shows current weather data for this location. These values are model/observation-based weather data and are kept separate from physical sensor readings.`;
+    list.parentElement.appendChild(box);
+  }
+}
+async function fetchPublicRadius(radiusKm){
+  const meters=Math.round(radiusKm*1000);
+  const url=`https://api.opensensemap.org/boxes?near=${encodeURIComponent(lat+','+lon)}&maxDistance=${meters}&limit=100&full=true&format=json`;
+  const res=await fetch(url,{cache:'no-store'}); if(!res.ok) throw new Error('openSenseMap '+res.status);
+  const data=await res.json(); return Array.isArray(data)?data:[];
+}
+async function loadOpenMeteoFallback(){
+  try{
+    const url=`https://api.open-meteo.com/v1/forecast?latitude=${encodeURIComponent(lat)}&longitude=${encodeURIComponent(lon)}&current=temperature_2m,relative_humidity_2m,precipitation,rain,weather_code,wind_speed_10m,pressure_msl&hourly=soil_moisture_0_to_1cm&forecast_days=1&timezone=auto`;
+    const res=await fetch(url,{cache:'no-store'}); if(!res.ok) throw new Error('Open-Meteo '+res.status);
+    const d=await res.json();
+    const soilArr=d.hourly?.soil_moisture_0_to_1cm||[]; const soil=soilArr.length?Number(soilArr[Math.min(new Date().getHours(),soilArr.length-1)]):null;
+    publicStationState.weather={rain:Number.isFinite(Number(d.current?.rain))?Number(d.current.rain):Number(d.current?.precipitation),soil:Number.isFinite(soil)?soil*100:null};
+  }catch(e){publicStationState.weather=null;}
+}
+async function loadPublicStations(){
+  if(!Number.isFinite(lat)||!Number.isFinite(lon)) return;
+  $('publicStationText').innerHTML='<span class="publicSpinner">Connecting to free public weather-station network…</span>';
+  await loadOpenMeteoFallback();
+  let boxes=[]; let usedRadius=null; let lastErr=null;
+  for(const radius of PUBLIC_RADII_KM){
+    try{
+      const candidate=await fetchPublicRadius(radius); boxes=candidate;
+      const hasObs=candidate.some(b=>Array.isArray(b.sensors)&&b.sensors.some(s=>publicSensorValue(s)!==null&&publicSensorTime(s)));
+      if(hasObs){usedRadius=radius;break;}
+      if(!boxes.length) continue;
+    }catch(err){lastErr=err;}
+  }
+  const rows=[];
+  for(const box of boxes){
+    const coords=box.currentLocation?.coordinates||box.location?.coordinates; if(!coords||coords.length<2) continue;
+    const blon=Number(coords[0]),blat=Number(coords[1]); if(!Number.isFinite(blat)||!Number.isFinite(blon)) continue;
+    const observations=[];
+    for(const sensor of (Array.isArray(box.sensors)?box.sensors:[])){
+      const type=publicSensorType(sensor),value=publicSensorValue(sensor),timestamp=publicSensorTime(sensor);
+      if(!type||value===null||!timestamp) continue;
+      observations.push({type,value,unit:sensor.unit||'',timestamp,sensorId:sensor._id,title:sensor.title||''});
+    }
+    const updatedAt=observations.map(o=>o.timestamp).sort().pop()||box.lastMeasurementAt||box.updatedAt||null;
+    rows.push({id:box._id,name:box.name||box.title||'Public weather station',lat:blat,lon:blon,distance_km:publicStationDistance(lat,lon,blat,blon),observations,updatedAt});
+  }
+  rows.sort((a,b)=>{const al=publicStationAge(a.updatedAt)<=24*3600?0:1,bl=publicStationAge(b.updatedAt)<=24*3600?0:1;return al-bl||a.distance_km-b.distance_km;});
+  publicStationState.stations=rows; publicStationState.best=rows[0]||null;
+  let rainBest=null,soilBest=null;
+  for(const st of rows) for(const o of st.observations){const item={value:o.value,unit:o.unit,timestamp:o.timestamp,stationName:st.name,distance_km:st.distance_km,stationId:st.id,sensorId:o.sensorId}; if(o.type==='rain'&&(!rainBest||st.distance_km<rainBest.distance_km))rainBest=item;if(o.type==='soil'&&(!soilBest||st.distance_km<soilBest.distance_km))soilBest=item;}
+  publicStationState.rain=rainBest;publicStationState.soil=soilBest;
+  if(rows.length){
+    const physical=rows.filter(x=>x.observations.length).length;
+    $('publicStationText').textContent=`Found ${physical} real public station${physical===1?'':'s'} with observations near ${selectedSearchName()}${usedRadius?` within ${usedRadius} km`:''}. Physical readings are shown first; weather-model data is only a fallback.`;
+  }else if(publicStationState.weather){
+    $('publicStationText').textContent=`No reachable public physical sensor station was found near ${selectedSearchName()} right now. Current weather remains available from the free Open-Meteo API; no sensor values are fabricated.`;
+  }else if(lastErr){
+    $('publicStationText').textContent='Public station API is temporarily unreachable. Try again from the published GitHub Pages site or later.';
+  }else{
+    $('publicStationText').textContent='No public physical station with recent measurements was found near this location.';
+  }
+  renderPublicStations();
+}
+function startPublicStationPolling(){loadPublicStations();if(publicStationsTimer)clearInterval(publicStationsTimer);publicStationsTimer=setInterval(loadPublicStations,30000);}
+const _oldRefreshLocationServices=window.refreshLocationServices;
+window.refreshLocationServices=function(){if(typeof _oldRefreshLocationServices==='function')_oldRefreshLocationServices();setTimeout(startPublicStationPolling,250);};
+window.addEventListener('beforeunload',()=>{if(publicStationsTimer)clearInterval(publicStationsTimer);});
+setTimeout(startPublicStationPolling,1200);
+</script>
+
+
+<div style="text-align:center;padding:18px 12px 28px;font-size:12px;opacity:.8">
+  <div>Created by Vignesh P</div>
+  <a href="https://www.instagram.com/vignesh_pgd/" target="_blank" rel="noopener noreferrer">Instagram: @vignesh_pgd</a>
+</div>
+</body>
+</html>
